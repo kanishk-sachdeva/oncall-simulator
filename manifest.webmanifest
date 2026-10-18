@@ -1,0 +1,16 @@
+{
+  "name": "ON-CALL — platform incident simulator",
+  "short_name": "ON-CALL",
+  "description": "Six incidents, one night, thirteen decisions. You are the on-call platform engineer.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c0d11",
+  "theme_color": "#0c0d11",
+  "categories": ["games", "education"],
+  "icons": [
+    { "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

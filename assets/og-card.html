@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ON-CALL — social card</title>
+<style>
+  @font-face { font-family: mono; src: local("SF Mono"), local("Menlo"), local("Consolas"); }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: #0c0d11;
+    color: #e9ebef;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    position: relative;
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 80% at 30% 20%, black, transparent 78%);
+  }
+  .frame { position: absolute; inset: 26px; border: 1px solid #23262f; border-radius: 8px; }
+  .inner { position: absolute; inset: 26px; padding: 44px 48px; display: flex; flex-direction: column; justify-content: space-between; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; }
+  h1 { font-size: 30px; letter-spacing: 0.22em; font-weight: 700; }
+  .tagline { color: #555c68; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; }
+  .hero { display: flex; align-items: flex-end; gap: 40px; }
+  .big { font-size: 190px; line-height: 0.78; font-weight: 700; color: #ffb020; letter-spacing: -0.03em; }
+  .stack { padding-bottom: 6px; }
+  .line1 { font-size: 46px; line-height: 1.1; font-weight: 700; letter-spacing: 0.01em; }
+  .line1 .dim { color: #555c68; }
+  .line2 { margin-top: 14px; color: #a7adb8; font-size: 21px; line-height: 1.45; max-width: 640px; }
+  .bottom { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #23262f; padding-top: 22px; }
+  .chips { display: flex; gap: 10px; }
+  .chip { border: 1px solid #2d313b; color: #a7adb8; font-size: 15px; padding: 6px 12px; border-radius: 3px; }
+  .chip.sev { color: #f0526b; border-color: #f0526b; }
+  .chip.rec { color: #a98bf5; border-color: #a98bf5; }
+  .url { color: #555c68; font-size: 16px; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="frame"></div>
+  <div class="inner">
+    <div class="top">
+      <h1>ON&#8209;CALL</h1>
+      <div class="tagline">platform incident simulator</div>
+    </div>
+
+    <div class="hero">
+      <div class="big">B</div>
+      <div class="stack">
+        <div class="line1">Six incidents. <span class="dim">One night.</span></div>
+        <div class="line2">You are the on-call engineer. Every choice moves the clock, burns error budget and decides whether the incident comes back.</div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="chips">
+        <span class="chip sev">SEV1</span>
+        <span class="chip">23 incidents</span>
+        <span class="chip">138 decisions</span>
+        <span class="chip rec">RECURRENCE</span>
+      </div>
+      <div class="url">oncall-simulator.vercel.app</div>
+    </div>
+  </div>
+</body>
+</html>

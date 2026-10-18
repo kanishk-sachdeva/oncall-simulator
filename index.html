@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ON-CALL — the platform incident simulator</title>
+<meta name="description" content="You are the on-call platform engineer. Six incidents, one night, thirteen decisions. Every choice moves the clock, burns error budget and decides whether the incident comes back. Free, in your browser, no signup.">
+<link rel="canonical" href="https://oncall-simulator.vercel.app/">
+<meta name="theme-color" content="#0c0d11">
+<meta name="color-scheme" content="dark">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="ON-CALL">
+<meta property="og:title" content="ON-CALL — the platform incident simulator">
+<meta property="og:description" content="Six incidents, one night, thirteen decisions. You are the on-call engineer. Every choice moves the clock and decides whether the incident comes back.">
+<meta property="og:url" content="https://oncall-simulator.vercel.app/">
+<meta property="og:image" content="https://oncall-simulator.vercel.app/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ON-CALL — a terminal-style incident simulator with a giant grade letter">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ON-CALL — the platform incident simulator">
+<meta name="twitter:description" content="Six incidents, one night, thirteen decisions. Free in your browser.">
+<meta name="twitter:image" content="https://oncall-simulator.vercel.app/assets/og.png">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/favicon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preload" href="/assets/app.css" as="style">
+<link rel="stylesheet" href="/assets/app.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "ON-CALL",
+  "url": "https://oncall-simulator.vercel.app/",
+  "description": "A browser game about being the on-call platform engineer: six incidents, thirteen decisions, one night.",
+  "applicationCategory": "GameApplication",
+  "operatingSystem": "Any",
+  "browserRequirements": "Requires JavaScript",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CAD" },
+  "author": { "@type": "Person", "name": "Kanishk Sachdeva", "url": "https://kanishksachdeva.com" }
+}
+</script>
+</head>
+<body data-screen="title">
+<div class="app">
+
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="masthead">
+    <div class="brand">
+      <h1>ON&#8209;CALL</h1>
+      <span class="brand-sub">platform incident simulator</span>
+    </div>
+    <div class="masthead-tools">
+      <button class="icon-btn" id="sound-btn" type="button" aria-pressed="false">SOUND OFF</button>
+      <button class="icon-btn" id="quit-btn" type="button" aria-label="End this shift and return to the start">EXIT</button>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ── title ─────────────────────────────────────────── -->
+    <section class="screen is-active" id="screen-title" aria-labelledby="title-heading">
+      <h2 class="sr" id="title-heading">Start a shift</h2>
+
+      <div class="hero-title">Six incidents.<br><span class="dim">One night.</span><br>Yours.</div>
+
+      <p class="hero-lede">
+        You are the on-call platform engineer. The pager goes off at <strong>02:11</strong> and it does not stop.
+        Every move you make advances the clock, burns error budget and touches a number of real customers —
+        and if you only patch the symptom, <strong>the incident comes back worse</strong> before your shift ends.
+      </p>
+
+      <div class="pager-card">
+        <div class="pager-bar"><span class="pager-dot" aria-hidden="true"></span> Pager · primary on-call</div>
+        <div class="pager-body">
+          <p class="page-line"><b>[SEV1]</b> checkout-api error rate 8.2% — baseline 0.05%</p>
+          <p class="page-line">Last deploy: 12 minutes ago.</p>
+          <p class="page-meta" id="pool-stats">23 incidents · 138 decisions</p>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <button class="btn" id="start-btn" type="button" data-autofocus>Start the shift</button>
+        <span class="kbdhint">or press <kbd>Enter</kbd></span>
+      </div>
+
+      <p class="page-meta" id="best-line" hidden></p>
+
+      <div class="rule"></div>
+
+      <div class="howto">
+        <h2>How it works</h2>
+        <ol>
+          <li>Three or four options per decision. One is the right move. One is what you would do at 03:00 with no sleep.</li>
+          <li><strong>Error budget</strong> drains on bad calls. <strong>Blast radius</strong> tracks the biggest group of customers a single choice touched.</li>
+          <li>The runbook is available, once per incident, for <strong>−2 points and 3 minutes</strong>. Real on-call is a trade too.</li>
+          <li>End a run and you get a postmortem table, a grade, and a shareable shift number.</li>
+        </ol>
+      </div>
+
+      <div class="cta-row" style="margin-top:18px">
+        <input id="seed-input" type="text" inputmode="numeric" placeholder="shift #" aria-label="Replay a shift number" style="background:var(--panel);border:1px solid var(--line-2);border-radius:4px;color:var(--text);padding:10px 12px;font-family:var(--mono);font-size:13px;width:120px">
+        <button class="btn ghost btn-sm" id="start-seed-btn" type="button">Replay a shift</button>
+      </div>
+    </section>
+
+    <!-- ── play ──────────────────────────────────────────── -->
+    <section class="screen" id="screen-play" aria-label="Incident in progress">
+      <div class="hud" aria-label="Shift telemetry">
+        <div><div class="k">Clock</div><div class="v" id="hud-clock">02:11</div></div>
+        <div><div class="k">Incident</div><div class="v" id="hud-inc">1 / 6</div></div>
+        <div><div class="k">Error budget</div><div class="v" id="hud-budget">100%</div></div>
+        <div><div class="k">On the clock</div><div class="v" id="hud-min">0m</div></div>
+        <div><div class="k">Peak blast</div><div class="v" id="hud-peak">0</div></div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-head">
+          <span class="t" id="stage-title">PAGE RECEIVED</span>
+          <span class="badges">
+            <span class="recur" id="stage-recur" hidden>RECURRENCE</span>
+            <span class="sev sev1" id="stage-sev">SEV1</span>
+          </span>
+        </div>
+
+        <div class="log" id="log" role="log" aria-live="polite" aria-relevant="additions" tabindex="0"></div>
+
+        <div class="choices" id="choices" hidden></div>
+
+        <div class="stage-foot">
+          <button class="hint-btn" id="hint-btn" type="button">Consult runbook · −2 pts, +3 min</button>
+          <span class="kbdhint"><kbd>1</kbd>–<kbd>4</kbd> choose · <kbd>R</kbd> runbook · <kbd>Space</kbd> skip</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── postmortem ────────────────────────────────────── -->
+    <section class="screen" id="screen-end" aria-labelledby="pm-heading">
+      <h2 class="sr" id="pm-heading">Postmortem</h2>
+
+      <div class="pm-top">
+        <div class="grade-letter g-b" id="pm-grade" aria-hidden="true">B</div>
+        <div class="pm-verdict">
+          <p class="tag" id="pm-tagline">Shift over.</p>
+          <p class="sub" id="pm-sub">Shift #000000</p>
+          <p class="sub" id="new-best" hidden></p>
+        </div>
+      </div>
+
+      <div class="pm-grid">
+        <div><div class="k">Score</div><div class="v" id="pm-pts">0 / 0</div></div>
+        <div><div class="k">Time on the clock</div><div class="v" id="pm-mttr">0 min</div></div>
+        <div><div class="k">Peak blast radius</div><div class="v" id="pm-peak">0</div></div>
+        <div><div class="k">Re-paged</div><div class="v" id="pm-recur">0</div></div>
+      </div>
+
+      <table class="pm">
+        <caption>Postmortem — every decision, in order</caption>
+        <thead>
+          <tr>
+            <th scope="col" style="width:2.2em">#</th>
+            <th scope="col">Incident</th>
+            <th scope="col">Decision</th>
+            <th scope="col">Verdict</th>
+            <th scope="col" style="text-align:right">Pts</th>
+          </tr>
+        </thead>
+        <tbody id="pm-tbody"></tbody>
+      </table>
+
+      <div class="pm-actions">
+        <button class="btn" id="again-btn" type="button">New shift</button>
+        <button class="btn ghost" id="share-btn" type="button">Share result</button>
+        <button class="btn ghost" id="link-btn" type="button">Copy shift link</button>
+      </div>
+      <p class="share-state" id="share-state" role="status" aria-live="polite"></p>
+
+      <p class="pm-note">The grade is not a verdict on you. It is a verdict on whether the cause got fixed.</p>
+    </section>
+
+  </main>
+
+  <footer class="site-foot">
+    <span>ON-CALL · a game about the night shift</span>
+    <span>Built by <a href="https://kanishksachdeva.com" rel="noopener">Kanishk Sachdeva</a> · <a href="https://github.com/kanishk-sachdeva" rel="noopener">source</a></span>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<noscript>
+  <div style="max-width:640px;margin:40px auto;padding:20px;border:1px solid #23262f;font-family:monospace;color:#e9ebef">
+    ON-CALL is a small JavaScript game. It needs JavaScript enabled, and nothing else — no account, no network calls.
+  </div>
+</noscript>
+
+<script type="module" src="/src/app.js"></script>
+</body>
+</html>
