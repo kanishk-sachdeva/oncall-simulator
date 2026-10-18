@@ -396,6 +396,15 @@ button { font: inherit; color: inherit; }
 }
 
 /* ─── postmortem ───────────────────────────────────────────── */
+.pm-title {
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+.pm-title:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
 .pm-top { display: flex; align-items: flex-end; gap: 18px; flex-wrap: wrap; margin-top: 6px; }
 .grade-letter {
   font-size: clamp(64px, 16vw, 108px);
