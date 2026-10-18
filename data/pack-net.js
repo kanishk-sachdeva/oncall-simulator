@@ -141,7 +141,7 @@ export const pack = [
             label: "Point the listener at checkout-tls and reload ingress",
             pts: 10, min: 6, customers: 0, fixesCause: true,
             say: [
-              ["cmd", "$ kubectl -n edge annotate svc ingress-public acm-cert-arn=arn:aws:acm:ca-central-1:123:certificate/7f02"],
+              ["cmd", "$ kubectl -n edge annotate ingress ingress-public alb.ingress.kubernetes.io/certificate-arn=arn:aws:acm:ca-central-1:123:certificate/7f02"],
               ["out", "service/ingress-public patched; target group deregistration delay unchanged"],
               ["good", "openssl serial=7F02; curl -v returns HTTP/2 200; TLS errors 14% -> 0.1%."],
               ["note", "The fix changes the artifact selected by the serving listener, not just cert-manager status."]

@@ -14,8 +14,10 @@
 
   --text: #e9ebef;
   --text-2: #a7adb8;
-  --text-3: #767d8a;
-  --text-4: #555c68;
+  --text-3: #98a0ad;   /* 5.97:1 on the lightest panel */
+  --text-4: #868d9c;   /* 4.73:1 on the lightest panel — WCAG AA for body text */
+  --control-border: #6b7280;      /* >= 3.2:1 on every surface (1.4.11) */
+  --control-border-soft: #666d7c; /* large card outlines */
 
   --amber: #ffb020;
   --amber-dim: #8a5e12;
@@ -65,7 +67,19 @@ button { font: inherit; color: inherit; }
   position: absolute; left: -9999px; top: 0;
   background: var(--amber); color: #12131a; padding: 10px 14px; z-index: 100;
 }
-.skip:focus { left: 8px; top: 8px; }
+.skip:focus, .skip:focus-visible { left: 8px; top: 8px; }
+
+.recur-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--violet);
+  border-radius: 2px;
+  color: var(--violet);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  vertical-align: 1px;
+}
 
 .app {
   position: relative;
@@ -106,10 +120,12 @@ button { font: inherit; color: inherit; }
 
 .icon-btn {
   background: transparent;
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--control-border);
   color: var(--text-3);
   border-radius: var(--radius);
-  padding: 6px 9px;
+  padding: 8px 11px;
+  min-height: 34px;
+  min-width: 44px;
   font-size: 11px;
   letter-spacing: 0.1em;
   cursor: pointer;
@@ -193,7 +209,7 @@ button { font: inherit; color: inherit; }
 .btn:active { transform: translateY(1px); }
 .btn.ghost {
   background: transparent;
-  border-color: var(--line-3);
+  border-color: var(--control-border);
   color: var(--text-2);
   font-weight: 500;
 }
@@ -245,6 +261,7 @@ button { font: inherit; color: inherit; }
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
 }
 .hud > div { background: var(--panel); padding: 8px 11px; }
+.hud dt, .hud dd { margin: 0; }
 .hud .k { color: var(--text-4); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
 .hud .v {
   font-size: 14px; margin-top: 1px; font-variant-numeric: tabular-nums;
@@ -292,7 +309,7 @@ button { font: inherit; color: inherit; }
   max-height: 52vh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 .log::-webkit-scrollbar { width: 8px; }
 .log::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
@@ -330,9 +347,10 @@ button { font: inherit; color: inherit; }
   display: flex; gap: 10px; align-items: baseline;
   text-align: left;
   background: var(--panel-2);
-  border: 1px solid var(--line-2);
+  border: 1px solid var(--control-border-soft);
   border-radius: var(--radius);
   padding: 11px 12px;
+  min-height: 44px;
   font-size: 13.5px;
   line-height: 1.45;
   cursor: pointer;
@@ -365,9 +383,9 @@ button { font: inherit; color: inherit; }
   flex-wrap: wrap;
 }
 .hint-btn {
-  background: transparent; border: 1px solid var(--line-2); color: var(--text-3);
-  border-radius: var(--radius); padding: 5px 10px; font-size: 11px; cursor: pointer;
-  letter-spacing: 0.06em;
+  background: transparent; border: 1px solid var(--control-border); color: var(--text-2);
+  border-radius: var(--radius); padding: 8px 12px; min-height: 34px; font-size: 11px;
+  cursor: pointer; letter-spacing: 0.06em;
 }
 .hint-btn:hover:not([disabled]) { border-color: var(--blue); color: var(--blue); }
 .hint-btn[disabled] { opacity: 0.4; cursor: not-allowed; }

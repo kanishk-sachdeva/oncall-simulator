@@ -18,7 +18,7 @@ export const pack = [
           {
             label: "Run Cost Explorer grouped by usage type for the last 24 hours",
             pts: 10, min: 3, customers: 0, fixesCause: false,
-            say: [["cmd", "$ aws ce get-cost-and-usage --time-period Start=2026-10-17,End=2026-10-19 --granularity HOURLY --metrics UnblendedCost --group-by Type=USAGE_TYPE"], ["out", "NatGateway-Bytes: 41,209,884,672; UnblendedCost: 1184.22 USD"], ["good", "The cost is in the line item, with 41.2 GB processed in one hour."], ["note", "Cost investigation starts with usage and amount, not a resource list."]]
+            say: [["cmd", "$ aws ce get-cost-and-usage --time-period Start=2026-10-18,End=2026-10-19 --granularity HOURLY --group-by Type=DIMENSION,Key=USAGE_TYPE"], ["out", "NatGateway-Bytes: 26,311,111,111,111; UnblendedCost: 1184.00 USD"], ["good", "The cost is in the line item: 26.3 TB processed in one hour of a 24-hour window."], ["note", "Cost investigation starts with usage and amount, not a resource list."]]
           },
           {
             label: "Raise the FinOps budget threshold to $20,000 for the day",
@@ -38,7 +38,7 @@ export const pack = [
           {
             label: "Throttle image-resizer and route its S3 traffic through a gateway endpoint",
             pts: 10, min: 9, customers: 900, fixesCause: true,
-            say: [["cmd", "$ kubectl -n media scale deploy/image-resizer --replicas=2; aws ec2 create-vpc-endpoint --service-name com.amazonaws.ca-central-1.s3"], ["out", "image-resizer requests: 1,920 -> 410 per minute; S3 route uses vpce-0c31"], ["good", "NAT bytes fall from 41.2 GB/hour to 0.7 GB/hour; projected daily cost is $2,310."], ["note", "Reduce the producer and remove same-region S3 traffic from the metered path."]]
+            say: [["cmd", "$ kubectl -n media scale deploy/image-resizer --replicas=2"], ["cmd", "$ aws ec2 create-vpc-endpoint --vpc-id vpc-0d21 --vpc-endpoint-type Gateway --service-name com.amazonaws.ca-central-1.s3 --route-table-ids rtb-0a11,rtb-0b22"], ["out", "image-resizer requests: 1,920 -> 410 per minute; S3 route uses vpce-0c31"], ["good", "NAT bytes fall from 26.3 TB/hour to 2.1 TB/hour; projected daily cost drops to $2,310."], ["note", "Reduce the producer and remove same-region S3 traffic from the metered path."]]
           },
           {
             label: "Scale image-resizer to 40 replicas to finish the backlog",
@@ -73,7 +73,7 @@ export const pack = [
           {
             label: "Describe the billing-writer consumer group and partition lag",
             pts: 10, min: 3, customers: 0, fixesCause: false,
-            say: [["cmd", "$ kafka-consumer-groups --bootstrap-server kafka.prod:9092 --describe --group billing-writer"], ["out", "billing-writer 7 9182441 11982441 2,000,000 billing-3"], ["good", "One partition is stuck at the malformed record while the group remains assigned."], ["note", "Consumer-group state identifies the blast radius before a disruptive action."]]
+            say: [["cmd", "$ kafka-consumer-groups --bootstrap-server kafka.prod:9092 --describe --group billing-writer"], ["out", "billing-writer billing-events 7 9182441 11182441 2000000 consumer-3-9f2a /10.0.4.19 consumer-3"], ["good", "One partition is stuck at the malformed record while the group remains assigned."], ["note", "Consumer-group state identifies the blast radius before a disruptive action."]]
           },
           {
             label: "Restart every billing consumer so the group catches up together",
@@ -98,7 +98,7 @@ export const pack = [
           {
             label: "Purge billing-events with kafka-delete-records --offset-json and recreate it",
             pts: -10, min: 8, customers: 60000, fixesCause: false,
-            say: [["cmd", "$ kafka-delete-records --bootstrap-server kafka.prod:9092 --offset-json billing-events-all.json"], ["out", "Delete records accepted for 12 partitions"], ["bad", "Valid unpaid invoices vanish with the poison record; replay has no source."], ["note", "Purging a queue destroys evidence and good work to remove one bad message."]]
+            say: [["cmd", "$ kafka-delete-records --bootstrap-server kafka.prod:9092 --offset-json-file billing-events-all.json"], ["out", "Delete records accepted for 12 partitions"], ["bad", "Valid unpaid invoices vanish with the poison record; replay has no source."], ["note", "Purging a queue destroys evidence and good work to remove one bad message."]]
           },
           {
             label: "Skip offset 9182441 manually and add a dashboard annotation",
@@ -128,7 +128,7 @@ export const pack = [
           {
             label: "Probe Prometheus readiness and query the up metric",
             pts: 10, min: 4, customers: 0, fixesCause: false,
-            say: [["cmd", "$ curl -fsS https://prometheus.prod/-/ready; promtool query instant http://prometheus.prod up"], ["out", "curl: (28) Operation timed out; promtool: context deadline exceeded"], ["good", "The telemetry reader is unavailable, so green alerts are not evidence of health."], ["note", "Probe the artifact that serves alerts, not only the application dashboard."]]
+            say: [["cmd", "$ curl -fsS https://prometheus.prod/-/ready; curl -g 'http://prometheus.prod/api/v1/query?query=up'"], ["out", "curl: (28) Operation timed out; promtool: context deadline exceeded"], ["good", "The telemetry reader is unavailable, so green alerts are not evidence of health."], ["note", "Probe the artifact that serves alerts, not only the application dashboard."]]
           },
           {
             label: "Raise every latency alert threshold to stop the silent period",
@@ -148,7 +148,7 @@ export const pack = [
           {
             label: "Page the lead, post status, and route synthetic checks to Slack",
             pts: 10, min: 6, customers: 4200, fixesCause: true,
-            say: [["cmd", "$ curl -X POST https://status.example/api/incidents -d 'name=metrics blind spot&status=investigating'"], ["out", "incident 2026-10-18-obs created; synthetic checkout p95 is 4.8s"], ["said", "Status page: Investigating elevated checkout latency; next update in 20 minutes."], ["note", "Communicate the monitoring failure and use an independent signal until alerts are trustworthy."]]
+            say: [["cmd", "$ curl -X POST https://status.example.com/api/v1/incidents -H 'Content-Type: application/json' -H 'Authorization: Bearer $STATUS_TOKEN' -d @incident.json"], ["out", "incident 2026-10-18-obs created; synthetic checkout p95 is 4.8s"], ["said", "Status page: Investigating elevated checkout latency; next update in 20 minutes."], ["note", "Communicate the monitoring failure and use an independent signal until alerts are trustworthy."]]
           },
           {
             label: "Tell nobody until Prometheus is healthy and then backfill the status page",

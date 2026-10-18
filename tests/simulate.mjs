@@ -36,7 +36,8 @@ for (const inc of pool) {
       const cur = run.current();
       if (!cur) break;
       if (!cur.choices.length) { fail(`${inc.id} dead end at step ${cur.stepIndex}`); break; }
-      const pts = cur.choices.map((c, i) => inc.steps[cur.stepIndex].choices[i].pts);
+      // choices are served in a seeded shuffled order — map the view index back to the data
+      const pts = cur.choices.map((c) => inc.steps[cur.stepIndex].choices[c.origIndex].pts);
       let idx = 0;
       if (strategy === "best") idx = pts.indexOf(Math.max(...pts));
       if (strategy === "worst") idx = pts.indexOf(Math.min(...pts));
@@ -100,6 +101,47 @@ if (unseen.length) fail(`never selected in 400 seeds: ${unseen.join(", ")}`);
 // ── 4. all three severities exist in the pool ─────────────────────────────────
 const sevs = new Set(pool.map((i) => i.sev));
 if (sevs.size < 3) fail(`pool only covers severities: ${[...sevs].join(", ")}`);
+
+// ── 5. the answer is not always in the same slot (regression: was first 45/46) ─
+const posCounts = [0, 0, 0, 0];
+let posTotal = 0;
+for (let s = 0; s < 60; s++) {
+  for (const inc of pool) {
+    const run = createRun({ pool: [inc], seed: 100000 + s, size: 1 });
+    let guard = 0;
+    while (!run.isOver() && guard++ < 20) {
+      const cur = run.current();
+      if (!cur) break;
+      const pts = cur.choices.map((c) => inc.steps[cur.stepIndex].choices[c.origIndex].pts);
+      const bestPos = pts.indexOf(Math.max(...pts));
+      posCounts[bestPos]++;
+      posTotal++;
+      run.choose(bestPos);
+    }
+  }
+}
+const posShare = posCounts.map((n) => n / posTotal);
+console.log(`best-choice position share: ${posShare.map((p, i) => i + ":" + (p * 100).toFixed(1) + "%").join("  ")}`);
+if (Math.max(...posShare) > 0.45) fail(`positional bias: ${(Math.max(...posShare) * 100).toFixed(0)}% of best plays land in one slot`);
+
+// ── 6. "always pick the first option" must not be a winning strategy ──────────
+let firstPct = 0, firstCount = 0, firstAllS = true;
+for (let i = 0; i < 40; i++) {
+  const run = createRun({ pool, seed: 200000 + i, size: 6 });
+  let guard = 0;
+  while (!run.isOver() && guard++ < 200) {
+    const cur = run.current();
+    if (!cur) break;
+    run.choose(0);
+  }
+  const r = run.result();
+  firstPct += r.pct; firstCount++;
+  if (r.grade !== "S") firstAllS = false;
+}
+const firstMean = firstPct / Math.max(1, firstCount);
+console.log(`always-pick-first: mean ${firstMean.toFixed(1)}/100, all-S=${firstAllS}`);
+if (firstMean > 85) fail(`always picking the first option averages ${firstMean.toFixed(1)} — answer key is positional`);
+if (firstAllS) fail("always picking the first option grades S every time");
 
 console.log(`\nshifts simulated: ${RUNS} · decisions played: ${totalStepsPlayed}`);
 console.log(`score range: ${worstPts} .. ${bestPts}`);

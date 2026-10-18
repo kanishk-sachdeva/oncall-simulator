@@ -1,5 +1,5 @@
 // ON-CALL — UI + controller. Depends on engine.js (pure) and pool.js (data).
-import { createRun, clockFor, shareText, verdictFor, seedFromString } from "./engine.js";
+import { createRun, clockFor, shareText, verdictFor, seedFromString, isValidSeed } from "./engine.js";
 import { POOL, POOL_STATS } from "./pool.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -19,6 +19,8 @@ const MARKS = { cmd: "›", good: "✓", bad: "✕", warn: "!", note: "∴", sai
 
 const state = {
   run: null,
+  token: 0,
+  timer: null,
   busy: false,
   sound: false,
   audio: null,
@@ -90,8 +92,16 @@ function writeBest(result) {
 function seedFromUrl() {
   const s = new URLSearchParams(location.search).get("s");
   if (!s) return null;
+  if (!/^\d{6}$/.test(s)) return null;
   const n = parseInt(s, 10);
-  return Number.isFinite(n) && n > 0 ? n : null;
+  return isValidSeed(n) ? n : null;
+}
+
+function seedFromInput(raw) {
+  const t = String(raw || "").trim();
+  if (!/^\d{6}$/.test(t)) return null;
+  const n = parseInt(t, 10);
+  return isValidSeed(n) ? n : null;
 }
 
 /* ───────────────────────── screens ───────────────────────── */
@@ -138,9 +148,15 @@ function appendLine(cls, text, opts = {}) {
   logBox().appendChild(line);
   scrollLog();
 
+  const announce = () => {
+    const live = document.getElementById("announcer");
+    if (live && text) live.textContent = text;
+  };
+
   const instant = reducedMotion() || opts.instant || cls === "gap";
   if (instant || !text) {
     body.textContent = text || "";
+    announce();
     return Promise.resolve();
   }
   return new Promise((resolve) => {
@@ -158,6 +174,7 @@ function appendLine(cls, text, opts = {}) {
         state._timer = setTimeout(tick, 9);
       } else {
         state.typing = null;
+        announce();
         resolve();
       }
     };
@@ -175,10 +192,15 @@ async function appendLines(lines) {
   }
 }
 
+let scrollQueued = false;
 function scrollLog() {
-  const box = logBox();
-  if (!box) return;
-  box.scrollTop = box.scrollHeight;
+  if (scrollQueued) return;
+  scrollQueued = true;
+  requestAnimationFrame(() => {
+    scrollQueued = false;
+    const box = logBox();
+    if (box) box.scrollTop = box.scrollHeight;
+  });
 }
 
 /* ───────────────────────── HUD ───────────────────────── */
@@ -211,7 +233,13 @@ function updateHud(flashKey) {
 
 /* ───────────────────────── play ───────────────────────── */
 function startShift(seed) {
-  const useSeed = seed || Math.floor(100000 + Math.random() * 899999);
+  const token = ++state.token;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+  state.typing = null;
+  state.skipTyping = false;
+  state.busy = false;
+  const useSeed = isValidSeed(seed) ? seed : Math.floor(100000 + Math.random() * 899999);
   state.run = createRun({ pool: POOL, seed: useSeed, size: SHIFT_SIZE });
   state.lastResult = null;
   clearLog();
@@ -222,7 +250,7 @@ function startShift(seed) {
   show("play");
   renderStageHeader();
   beep("page");
-  openIncident();
+  openIncident(token);
 }
 
 function renderStageHeader() {
@@ -236,7 +264,8 @@ function renderStageHeader() {
   $("#stage-recur").hidden = !inst.recurrent;
 }
 
-async function openIncident() {
+async function openIncident(token) {
+  if (token !== state.token) return;
   const cur = state.run.current();
   if (!cur) return endShift();
   clearLog();
@@ -245,10 +274,20 @@ async function openIncident() {
   state.busy = true;
   hideChoices();
   await appendLine("head", `${clockFor(SHIFT_START, state.run.state.minutes)}  ${cur.incident.title}  [${cur.instance.sev}]`);
+  if (token !== state.token) return;
+
   if (cur.instance.recurrent) {
-    await appendLine("warn", "RECURRENCE — this is the incident you did not finish properly. It is back, angrier.");
+    const prior = cur.instance.priorLabel;
+    await appendLine("warn", "RECURRENCE — this incident came back. Severity " + cur.instance.sev + ", penalties and minutes x1.5.");
+    if (prior) {
+      await appendLine("warn", "You closed it with: \u201c" + prior + "\u201d, which handled the symptom and left the cause in place.");
+    }
+    await appendLine("note", "The runbook line for this one: " + cur.incident.hint);
+    if (token !== state.token) return;
   }
+
   await appendLines(cur.incident.open);
+  if (token !== state.token) return;
   state.busy = false;
   renderStep();
 }
@@ -275,6 +314,11 @@ function renderStep() {
   box.hidden = false;
   updateHud();
   scrollLog();
+  const first = box.querySelector(".choice");
+  if (first) {
+    first.focus({ preventScroll: true });
+    if (window.innerWidth < 680) box.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
+  }
 }
 
 function hideChoices() {
@@ -285,6 +329,7 @@ function hideChoices() {
 
 async function pick(index) {
   if (state.busy || !state.run || state.run.isOver()) return;
+  const token = state.token;
   const res = state.run.choose(index);
   if (!res) return;
   state.busy = true;
@@ -292,7 +337,9 @@ async function pick(index) {
 
   const cls = res.pts >= 5 ? "cmd" : res.pts >= 1 ? "cmd" : res.pts === 0 ? "warn" : "bad";
   await appendLine(cls, "▸ " + res.choice.label);
+  if (token !== state.token) return;
   await appendLines(res.say);
+  if (token !== state.token) return;
 
   if (res.customers > 0) {
     await appendLine("note", `Blast radius this decision: ${res.customers.toLocaleString("en-US")} customers.`);
@@ -310,12 +357,14 @@ async function pick(index) {
     );
   }
 
+  if (token !== state.token) return;
   state.busy = false;
 
   if (state.run.isOver()) return endShift();
   if (res.done) {
     await new Promise((r) => setTimeout(r, 420));
-    return openIncident();
+    if (token !== state.token) return;
+    return openIncident(token);
   }
   renderStep();
 }
@@ -340,9 +389,11 @@ function endShift() {
   const set = (id, v) => { const n = document.getElementById(id); if (n) n.textContent = v; };
 
   set("pm-grade", result.grade);
-  $("#pm-grade").className = "grade-letter " + gradeCls;
+  const gradeEl = $("#pm-grade");
+  gradeEl.className = "grade-letter " + gradeCls;
+  gradeEl.setAttribute("aria-label", "Grade " + result.grade + ", " + result.pct + " out of 100");
   set("pm-tagline", result.tagline);
-  set("pm-sub", `Shift #${result.seed} · ${result.fixed} root-cause ${result.fixed === 1 ? "fix" : "fixes"} · ${(result.durationMs / 1000).toFixed(0)}s played`);
+  set("pm-sub", `Shift #${result.seed} · ${result.fixedIncidents} of ${result.closed} causes actually fixed · decisions ${result.decisionPct}/100, closure ${result.closurePct}%`);
 
   set("pm-pts", `${result.pts} / ${result.maxPts}`);
   set("pm-mttr", result.minutes + " min");
@@ -357,7 +408,9 @@ function endShift() {
     const tr = el("tr");
     if (d.recurrent) tr.className = "rec";
     tr.appendChild(el("td", "num", String(i + 1)));
-    tr.appendChild(el("td", null, d.incident.length > 26 ? d.incident.slice(0, 24) + "…" : d.incident));
+    const nameCell = el("td", null, d.incident.length > 26 ? d.incident.slice(0, 24) + "…" : d.incident);
+    if (d.recurrent) nameCell.appendChild(el("span", "recur-tag", "×1.5"));
+    tr.appendChild(nameCell);
     tr.appendChild(el("td", "move", d.label));
     const vd = el("td");
     vd.appendChild(el("span", "vd " + v.cls, v.word));
@@ -449,22 +502,38 @@ function setSound(on) {
 
 function bind() {
   $("#start-btn").addEventListener("click", () => startShift());
-  $("#start-seed-btn").addEventListener("click", () => {
+  const replay = () => {
     const raw = $("#seed-input").value.trim();
-    if (!raw) return toast("Enter a shift number first");
-    startShift(seedFromString(raw) || parseInt(raw, 10) || undefined);
+    if (!raw) return toast("Enter a shift number (6 digits)");
+    const seed = seedFromInput(raw);
+    if (!seed) return toast("Shift numbers are 6 digits, e.g. 123456");
+    startShift(seed);
+  };
+  $("#start-seed-btn").addEventListener("click", replay);
+  $("#seed-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); replay(); }
   });
   $("#again-btn").addEventListener("click", () => startShift());
   $("#share-btn").addEventListener("click", shareResult);
   $("#link-btn").addEventListener("click", copyLink);
   $("#quit-btn").addEventListener("click", () => {
     if (!state.run || state.run.isOver()) return show("title");
-    if (confirm("End this shift and go back? The current run will be lost.")) { state.run.finish(); renderTitle(); show("title"); }
+    if (confirm("End this shift and go back? The current run will be lost.")) {
+      state.token++;
+      state.busy = false;
+      state.typing = null;
+      if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+      state.run.finish();
+      renderTitle();
+      show("title");
+    }
   });
   $("#hint-btn").addEventListener("click", consultHint);
   $("#sound-btn").addEventListener("click", () => setSound(!state.sound));
 
   document.addEventListener("keydown", (e) => {
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     const screen = document.body.dataset.screen;
     if (screen === "play") {
       if (e.key >= "1" && e.key <= "4") {

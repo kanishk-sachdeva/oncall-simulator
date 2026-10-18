@@ -92,7 +92,8 @@ function lineCheck(file, id, line, where) {
   const [cls, text] = line;
   if (!LINE_CLASSES.has(cls)) err(file, id, `${where} class "${cls}" not allowed`);
   if (typeof text !== "string" || text.length < 2) err(file, id, `${where} text missing`);
-  if (text.length > 170) warn(file, id, `${where} is ${text.length} chars (phone-hostile, aim <=160)`);
+  if (cls !== "cmd" && text.length > 170) warn(file, id, `${where} is ${text.length} chars (phone-hostile, aim <=160)`);
+  if (cls === "cmd" && text.length > 210) warn(file, id, `${where} command line is ${text.length} chars`);
   if (/[!]{1,}/.test(text) && cls !== "said") warn(file, id, `${where} contains an exclamation mark`);
   if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(text)) err(file, id, `${where} contains an emoji`);
 }

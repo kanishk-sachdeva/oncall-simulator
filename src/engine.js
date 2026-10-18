@@ -1,7 +1,7 @@
 // ON-CALL engine — pure state machine, no DOM, no globals.
 // Everything here is deterministic given (pool, seed) so a shift can be shared by URL.
 
-export const SEV_LABEL = { SEV1: "SEV1", SEV2: "SEV2", SEV3: "SEV3" };
+export const GRADES = { S: 90, A: 74, B: 58, C: 42, D: 24 };
 
 /** Deterministic PRNG (mulberry32). Same seed -> same shift, forever. */
 export function mulberry32(a) {
@@ -22,6 +22,10 @@ export function seedFromString(str) {
   return (h >>> 0) % 900000 + 100000;
 }
 
+export function isValidSeed(n) {
+  return Number.isInteger(n) && n >= 100000 && n <= 999999;
+}
+
 function weightedPick(items, rnd) {
   const total = items.reduce((s, it) => s + (it.weigh || 1), 0);
   let r = rnd() * total;
@@ -33,14 +37,24 @@ function weightedPick(items, rnd) {
 }
 
 function bumpSev(sev) {
-  if (sev === "SEV3") return "SEV2";
-  if (sev === "SEV2") return "SEV1";
-  return "SEV1";
+  return sev === "SEV3" ? "SEV2" : "SEV1";
+}
+
+/** Fisher-Yates over a seeded stream. The right answer is never in the same slot twice. */
+function shuffledOrder(n, seedString) {
+  const rnd = mulberry32(seedFromString(seedString));
+  const order = [];
+  for (let i = 0; i < n; i++) order.push(i);
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const t = order[i]; order[i] = order[j]; order[j] = t;
+  }
+  return order;
 }
 
 /** A recurrence is the same incident, angrier: more penalty, more minutes, more damage. */
-function makeInstance(inc, { mult = 1, sev = inc.sev, recurrent = false } = {}) {
-  return { inc, mult, sev, recurrent, key: recurrent ? inc.id + "#r" + Math.random().toString(36).slice(2, 6) : inc.id };
+function makeInstance(inc, { mult = 1, sev = inc.sev, recurrent = false, priorLabel = null } = {}) {
+  return { inc, mult, sev, recurrent, priorLabel, key: inc.id + (recurrent ? "#r" : "") };
 }
 
 export function pickIncidents(pool, seed, size) {
@@ -60,27 +74,42 @@ export function createRun({ pool, seed, size = 6 }) {
     seed,
     size,
     queue: picked.map((inc) => makeInstance(inc)),
+    picked: picked.map((i) => i.id),
     idx: 0,
     step: 0,
     pts: 0,
     maxPts: 0,
     minutes: 0,
     peak: 0,
-    fixed: 0,
+    fixedDecisions: 0,
+    fixedIncidents: 0,
+    closed: 0,
     recurrences: 0,
     scheduled: 0,
     decisions: [],
     hintUsed: false,
     stepMaxCounted: false,
+    orderCache: {},
     over: false,
     startedAt: Date.now()
   };
 
-  function instance() { return st.queue[st.idx] || null; }
-  function stepObj() {
+  const instance = () => st.queue[st.idx] || null;
+  const stepObj = () => {
     const inst = instance();
-    if (!inst) return null;
-    return inst.inc.steps[st.step] || null;
+    return inst ? inst.inc.steps[st.step] || null : null;
+  };
+
+  /** Per-step display order, memoised so a re-render never reshuffles under the player. */
+  function order() {
+    const s = stepObj();
+    if (!s) return [];
+    const inst = instance();
+    const key = inst.inc.id + ":" + st.step;
+    if (!st.orderCache[key]) {
+      st.orderCache[key] = shuffledOrder(s.choices.length, st.seed + "|" + inst.inc.id + "|" + st.step);
+    }
+    return st.orderCache[key];
   }
 
   function countStepMax() {
@@ -95,17 +124,21 @@ export function createRun({ pool, seed, size = 6 }) {
   function current() {
     if (st.over) return null;
     const inst = instance();
-    if (!inst) { finish(); return null; }
+    if (!inst) { st.over = true; return null; }
     countStepMax();
     const s = stepObj();
-    if (!s) { finish(); return null; }
+    if (!s) { st.over = true; return null; }
     return {
       incident: inst.inc,
       instance: inst,
       stepIndex: st.step,
       stepCount: inst.inc.steps.length,
       prompt: s.prompt,
-      choices: s.choices.map((c, i) => ({ index: i, label: c.label }))
+      choices: order().map((origIndex, viewIndex) => ({
+        index: viewIndex,
+        origIndex,
+        label: s.choices[origIndex].label
+      }))
     };
   }
 
@@ -118,11 +151,13 @@ export function createRun({ pool, seed, size = 6 }) {
     return inst.inc.hint;
   }
 
-  function choose(index) {
+  function choose(viewIndex) {
     const inst = instance();
     const s = stepObj();
     if (!inst || !s) return null;
-    const choice = s.choices[index];
+    const origIndex = order()[viewIndex];
+    if (origIndex === undefined) return null;
+    const choice = s.choices[origIndex];
     if (!choice) return null;
 
     const pts = Math.round((choice.pts || 0) * inst.mult);
@@ -132,10 +167,14 @@ export function createRun({ pool, seed, size = 6 }) {
     st.pts += pts;
     st.minutes += minutes;
     st.peak = Math.max(st.peak, customers);
-    if (choice.fixesCause) st.fixedThisIncident = true;
+    if (choice.fixesCause) {
+      st.fixedDecisions++;
+      st.fixedThisIncident = true;
+    }
 
     st.decisions.push({
       incident: inst.inc.title,
+      incidentId: inst.inc.id,
       recurrent: inst.recurrent,
       step: st.step,
       label: choice.label,
@@ -149,8 +188,7 @@ export function createRun({ pool, seed, size = 6 }) {
     st.stepMaxCounted = false;
 
     const done = st.step >= inst.inc.steps.length;
-    let finished = null;
-    if (done) finished = closeIncident();
+    const finished = done ? closeIncident() : null;
 
     return {
       choice,
@@ -167,62 +205,69 @@ export function createRun({ pool, seed, size = 6 }) {
   function closeIncident() {
     const inst = instance();
     const fixed = !!st.fixedThisIncident;
+    const lastLabel = st.decisions.length ? st.decisions[st.decisions.length - 1].label : null;
+    st.closed++;
+    if (fixed) st.fixedIncidents++;
+
     const out = {
       id: inst.inc.id,
       title: inst.inc.title,
       sev: inst.sev,
       recurrent: inst.recurrent,
-      fixed,
-      rootCauses: st.decisions.filter((d) => d.incident === inst.inc.title && d.fixesCause).length
+      fixed
     };
+
     st.fixedThisIncident = false;
     if (!fixed) {
       st.recurrences++;
-      // An unfixed incident comes back once, at a higher severity. A recurrence that
-      // you also fail to fix is not an escalator — the shift has to end.
+      // An unfixed incident comes back once, at a higher severity. A recurrence you also
+      // fail to fix is not an escalator — the shift has to end.
       if (!inst.recurrent && st.scheduled < 3) {
         st.scheduled++;
         const later = Math.min(st.queue.length, st.idx + 3);
         st.queue.splice(later, 0, makeInstance(inst.inc, {
           mult: 1.5,
           sev: bumpSev(inst.sev),
-          recurrent: true
+          recurrent: true,
+          priorLabel: lastLabel
         }));
       }
     }
+
     st.idx++;
     st.step = 0;
     st.stepMaxCounted = false;
     st.hintUsed = false;
-    if (st.idx >= st.queue.length) finish();
+    if (st.idx >= st.queue.length) st.over = true;
     return out;
   }
 
-  function finish() {
-    st.over = true;
-  }
-
-  function isOver() {
-    return st.over || st.idx >= st.queue.length;
-  }
+  function finish() { st.over = true; }
+  const isOver = () => st.over || st.idx >= st.queue.length;
 
   function result() {
-    const pct = Math.max(0, Math.min(100, Math.round((100 * (st.pts + 45)) / (st.maxPts + 45))));
+    const decisionPct = Math.max(0, Math.min(100, Math.round((100 * (st.pts + 45)) / (st.maxPts + 45))));
+    const closurePct = st.closed ? Math.round((100 * st.fixedIncidents) / st.closed) : 100;
+    // 70% of the grade is what you chose, 30% is whether the cause actually got fixed.
+    const pct = Math.max(0, Math.min(100, Math.round(decisionPct * 0.7 + closurePct * 0.3)));
     const grade = gradeFor(pct);
-    const causeFixes = st.decisions.filter((d) => d.fixesCause).length;
     return {
       seed: st.seed,
       grade: grade.letter,
       tagline: grade.tagline,
       pct,
+      decisionPct,
+      closurePct,
       pts: st.pts,
       maxPts: st.maxPts,
       minutes: st.minutes,
       peak: st.peak,
-      fixed: causeFixes,
+      fixed: st.fixedDecisions,
+      fixedIncidents: st.fixedIncidents,
+      closed: st.closed,
       recurrences: st.recurrences,
       decisions: st.decisions.slice(),
-      incidentCount: st.decisions.length ? st.decisions.length : 0,
+      picked: st.picked.slice(),
       durationMs: Date.now() - st.startedAt
     };
   }
@@ -231,12 +276,12 @@ export function createRun({ pool, seed, size = 6 }) {
 }
 
 export function gradeFor(pct) {
-  if (pct >= 90) return { letter: "S", tagline: "Textbook night. Mitigate, contain, prevent — in that order, every time." };
-  if (pct >= 74) return { letter: "A", tagline: "Strong recovery instinct. A couple of fixes were temporary, and you knew it." };
-  if (pct >= 58) return { letter: "B", tagline: "Everything went green. The platform still has some of the same bugs in it." };
+  if (pct >= 90) return { letter: "S", tagline: "Every incident closed properly, and nothing caught fire on the way." };
+  if (pct >= 74) return { letter: "A", tagline: "Strong night. A couple of fixes were temporary, and you knew it at the time." };
+  if (pct >= 58) return { letter: "B", tagline: "Everything went green. Some of the causes are still in the system." };
   if (pct >= 42) return { letter: "C", tagline: "Firefighting all night. The roof stayed on, nothing got built." };
-  if (pct >= 24) return { letter: "D", tagline: "You were the incident more than once. That happens — the pattern is what matters." };
-  return { letter: "F", tagline: "The pager won. Read the postmortem table, that is where the points were." };
+  if (pct >= 24) return { letter: "D", tagline: "You were the incident more than once. That happens. The pattern is what matters." };
+  return { letter: "F", tagline: "The pager won. The postmortem table shows exactly where it went." };
 }
 
 export function clockFor(startMinutes, extra) {
@@ -246,18 +291,15 @@ export function clockFor(startMinutes, extra) {
   return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
 
-/** Compact share text for clipboard / share sheet. */
+/** Share text — a challenge, not a receipt. */
 export function shareText(result, url) {
-  const lines = [
-    "ON-CALL — shift #" + result.seed,
-    "Grade " + result.grade + " · " + result.pct + "/100 · " + result.minutes + " min on the clock",
-    "Peak blast radius " + result.peak.toLocaleString("en-US") + " customers · " + result.fixed + " root-cause fixes · " + result.recurrences + " re-paged",
-    url
-  ];
-  return lines.join("\n");
+  return [
+    `I got ${result.grade} on six incidents — ${result.pct}/100, ${result.fixedIncidents} of ${result.closed} causes actually fixed.`,
+    `Can you beat it? Same shift, same incidents: ${url}`,
+    `Peak blast ${result.peak.toLocaleString("en-US")} customers · ${result.recurrences} re-paged`
+  ].join("\n");
 }
 
-/** Human label for a decision, used by the postmortem table. */
 export function verdictFor(pts) {
   if (pts >= 9) return { cls: "good", word: "Best play" };
   if (pts >= 5) return { cls: "good", word: "Solid" };

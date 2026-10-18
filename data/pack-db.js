@@ -7,7 +7,7 @@ export const pack = [
     weigh: 3,
     open: [
       ["said", "PagerDuty: [SEV1] checkout-api 503s at 31%, database connections at 100%."],
-      ["out", "Aurora PostgreSQL writer: 412 active connections; pool limit: 400."],
+      ["out", "Aurora PostgreSQL writer: 412 total connections; pool limit 400."],
       ["out", "Checkout p99 is 8.7s; the first alert fired 9 minutes ago."]
     ],
     hint: "Inspect pg_stat_activity before changing limits. Idle-in-transaction sessions can hold locks and consume pool slots.",
@@ -23,7 +23,7 @@ export const pack = [
             fixesCause: true,
             say: [
               ["cmd", "$ SELECT state, count(*) FROM pg_stat_activity GROUP BY state;"],
-              ["out", "active | 86; idle | 194; idle in transaction | 118"],
+              ["out", "active | 100; idle | 194; idle in transaction | 118  (total 412 / limit 400)"],
               ["good", "118 sessions have held transactions open for 41 minutes."],
               ["note", "Classify the pool before tuning it; idle-in-transaction is a leak signal."]
             ]
@@ -35,7 +35,7 @@ export const pack = [
             customers: 18000,
             fixesCause: false,
             say: [
-              ["cmd", "$ aws rds modify-db-parameter-group --parameters ParameterName=max_connections,ParameterValue=800"],
+              ["cmd", "$ aws rds modify-db-parameter-group --db-parameter-group-name aurora-pg15-prod --parameters \"ParameterName=max_connections,ParameterValue=800,ApplyMethod=pending-reboot\""],
               ["warn", "Parameter accepted; restart required for the new limit."],
               ["bad", "The leaking sessions continue; memory pressure pushes the writer into swap."],
               ["note", "A larger bucket does not stop a leak and can make database failure harder."]
@@ -80,7 +80,7 @@ export const pack = [
             fixesCause: false,
             say: [
               ["cmd", "$ SELECT pg_terminate_backend(pid) FROM pg_stat_activity;"],
-              ["bad", "All 412 sessions terminate, including 86 active checkout transactions."],
+              ["bad", "All 412 sessions terminate, including the 100 that were actively serving checkout."],
               ["warn", "Traffic recovers after 38 seconds, but 26,000 requests fail."],
               ["note", "Kill by evidence and age; indiscriminate cleanup expands the blast radius."]
             ]
@@ -227,7 +227,7 @@ export const pack = [
             customers: 0,
             fixesCause: true,
             say: [
-              ["cmd", "$ aws dynamodb describe-contributor-insights --table-name Sessions"],
+              ["cmd", "$ aws cloudwatch get-insight-rule-report --rule-name DynamoDB-ContributorInsights-Sessions --period 60 --metrics KeyspaceKeyCount"],
               ["out", "Top key event#2026-10-18: 96.1% of requests; throttled keys: 1"],
               ["good", "One logical key is concentrating traffic on one physical partition."],
               ["note", "Key distribution distinguishes a hot partition from a table-wide quota problem."]

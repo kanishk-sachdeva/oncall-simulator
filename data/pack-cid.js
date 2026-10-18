@@ -39,7 +39,7 @@ export const pack = [
           {
             label: "Disable promo_v2 for EU, then roll back v4.18.0",
             pts: 9, min: 7, customers: 42000, fixesCause: true,
-            say: [["cmd", "$ curl -X PATCH flags/promo_v2 -d '{\"eu\":false}'"], ["out", "flag promo_v2: EU=false; canary error rate 0.08%"], ["cmd", "$ kubectl rollout undo deploy/checkout-api -n prod"], ["good", "5xx falls 7.8% -> 0.06% in 94 seconds."], ["note", "The flag limits blast radius while rollback removes the incompatible validation code."]]
+            say: [["cmd", "$ curl -fsS -X PATCH https://flags.example.com/api/v1/flags/promo_v2 -H 'Content-Type: application/json' -d '{\"eu\":false}'"], ["out", "flag promo_v2: EU=false; canary error rate 0.08%"], ["cmd", "$ kubectl rollout undo deploy/checkout-api -n prod"], ["good", "5xx falls 7.8% -> 0.06% in 94 seconds."], ["note", "The flag limits blast radius while rollback removes the incompatible validation code."]]
           },
           {
             label: "Roll back the deployment without changing the feature flag",
@@ -75,12 +75,12 @@ export const pack = [
           {
             label: "Inspect lock metadata and the failed runner state",
             pts: 10, min: 4, customers: 0, fixesCause: false,
-            say: [["cmd", "$ terraform force-unlock -help; aws dynamodb get-item --table-name tf-locks"], ["out", "LockID prod/network, Who=gha-7421, Created=02:41:19Z"], ["out", "GitHub Actions run 7421 is completed: failure after SIGTERM"], ["note", "Confirm the writer is dead and identify the exact state before any unlock."]]
+            say: [["cmd", "$ aws dynamodb get-item --table-name tf-locks --key '{\"LockID\":{\"S\":\"prod/network\"}}'"], ["out", "LockID prod/network, Who=gha-7421, Created=02:41:19Z"], ["out", "GitHub Actions run 7421 is completed: failure after SIGTERM"], ["note", "Confirm the writer is dead and identify the exact state before any unlock."]]
           },
           {
             label: "Force-unlock prod/network and apply immediately",
             pts: -9, min: 3, customers: 16000, fixesCause: false,
-            say: [["cmd", "$ terraform force-unlock -force prod/network"], ["out", "Force-unlock successful"], ["bad", "A second runner writes while the timed-out apply still holds an AWS change; state now reports a stale association."], ["note", "Force-unlock blind can create concurrent writers and compound state drift."]]
+            say: [["cmd", "$ terraform force-unlock -force 7b4c19de-2f8a-4d61-9c07-prodnetwork"], ["out", "Force-unlock successful"], ["bad", "A second runner writes while the timed-out apply still holds an AWS change; state now reports a stale association."], ["note", "Force-unlock blind can create concurrent writers and compound state drift."]]
           },
           {
             label: "Edit the .tfstate JSON to remove the lock field",
@@ -95,7 +95,7 @@ export const pack = [
           {
             label: "Unlock after confirmation, refresh-only plan, then review apply",
             pts: 9, min: 12, customers: 0, fixesCause: true,
-            say: [["cmd", "$ terraform force-unlock prod/network"], ["out", "Do you really want to force-unlock? yes; Unlock successful"], ["cmd", "$ terraform plan -refresh-only -out=refresh.tfplan"], ["out", "Plan: 1 to update state, 0 to add, 0 to change, 0 to destroy"], ["good", "Reviewed state matches AWS before the network change is reapplied."], ["note", "Refresh reality first; a reviewed plan is the change-management boundary."]]
+            say: [["cmd", "$ terraform force-unlock 7b4c19de-2f8a-4d61-9c07-prodnetwork"], ["out", "Do you really want to force-unlock? yes; Unlock successful"], ["cmd", "$ terraform plan -refresh-only -out=refresh.tfplan"], ["out", "Plan: 1 to update state, 0 to add, 0 to change, 0 to destroy"], ["good", "Reviewed state matches AWS before the network change is reapplied."], ["note", "Refresh reality first; a reviewed plan is the change-management boundary."]]
           },
           {
             label: "Run terraform plan without refreshing remote objects",
@@ -161,7 +161,7 @@ export const pack = [
           {
             label: "Set ArgoCD sync policy to ignore Secret differences",
             pts: -8, min: 5, customers: 9000, fixesCause: false,
-            say: [["cmd", "$ argocd app set billing-prod --ignore-differences Secret"], ["out", "Application configured to ignore Secret differences"], ["bad", "Argo reports Synced while six pods continue using the old credential."], ["note", "Ignoring drift removes the alarm, not the inconsistent secret state."]]
+            say: [["cmd", "$ argocd app set billing-prod --ignore-differences group=,kind=Secret,name=payment-api,namespace=billing"], ["out", "Application configured to ignore Secret differences"], ["bad", "Argo reports Synced while six pods continue using the old credential."], ["note", "Ignoring drift removes the alarm, not the inconsistent secret state."]]
           }
         ]
       }

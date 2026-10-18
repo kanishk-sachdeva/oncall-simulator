@@ -39,12 +39,12 @@ export const pack = [
           {
             label: "Drain one node, prune unused images, then replace the nodegroup instance",
             pts: 10, min: 18, customers: 0, fixesCause: true,
-            say: [["cmd", "$ kubectl drain ip-10-42-7-19 --ignore-daemonsets --delete-emptydir-data"], ["out", "evicting pod checkout-api-6d7c; node/ip-10-42-7-19 drained"], ["cmd", "$ sudo crictl rmi --prune; aws autoscaling terminate-instance-in-auto-scaling-group ..."], ["good", "imagefs.available 7% -> 41%; DiskPressure=False; pending pods schedule on replacement capacity"], ["note", "Reclaiming images is temporary; replacing the contaminated node removes recurring local state."]]
+            say: [["cmd", "$ kubectl drain ip-10-42-7-19 --ignore-daemonsets --delete-emptydir-data"], ["out", "evicting pod checkout-api-6d7c; node/ip-10-42-7-19 drained"], ["cmd", "$ sudo crictl rmi --prune; aws autoscaling terminate-instance-in-auto-scaling-group --instance-id i-0a7f3c9d2b1e --should-decrement-desired-capacity false"], ["good", "imagefs.available 7% -> 41%; DiskPressure=False; pending pods schedule on replacement capacity"], ["note", "Reclaiming images is temporary; replacing the contaminated node removes recurring local state."]]
           },
           {
             label: "kubectl cordon every node and wait for kubelet GC",
             pts: 2, min: 12, customers: 14000, fixesCause: false,
-            say: [["cmd", "$ kubectl cordon -l kubernetes.io/os=linux"], ["out", "11 nodes cordoned; pending pods increase from 38 to 214"], ["warn", "Kubelet image GC may recover space, but cordoning the fleet blocks the recovery path."], ["note", "Limit the blast radius to one node; fleet-wide cordon turns pressure into an outage."]]
+            say: [["cmd", "$ kubectl get nodes -l kubernetes.io/os=linux -o name | xargs -r kubectl cordon"], ["out", "11 nodes cordoned; pending pods increase from 38 to 214"], ["warn", "Kubelet image GC may recover space, but cordoning the fleet blocks the recovery path."], ["note", "Limit the blast radius to one node; fleet-wide cordon turns pressure into an outage."]]
           },
           {
             label: "kubectl drain --force --delete-emptydir-data on the node",

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ON-CALL — the platform incident simulator</title>
-<meta name="description" content="You are the on-call platform engineer. Six incidents, one night, thirteen decisions. Every choice moves the clock, burns error budget and decides whether the incident comes back. Free, in your browser, no signup.">
+<meta name="description" content="You are the platform engineer on call at 02:11. Work six incidents by choosing what to inspect, mitigate and fix. Finish the shift, get a postmortem and a grade, then send your team the same shift to beat. Free, no signup.">
 <link rel="canonical" href="https://oncall-simulator.vercel.app/">
 <meta name="theme-color" content="#0c0d11">
 <meta name="color-scheme" content="dark">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="ON-CALL">
 <meta property="og:title" content="ON-CALL — the platform incident simulator">
-<meta property="og:description" content="Six incidents, one night, thirteen decisions. You are the on-call engineer. Every choice moves the clock and decides whether the incident comes back.">
+<meta property="og:description" content="You are the platform engineer on call at 02:11. Six incidents, thirteen decisions, one postmortem. If you only patch the symptom, the incident comes back inside your own shift.">
 <meta property="og:url" content="https://oncall-simulator.vercel.app/">
 <meta property="og:image" content="https://oncall-simulator.vercel.app/assets/og.png">
 <meta property="og:image:width" content="1200">
@@ -20,7 +20,7 @@
 <meta property="og:image:alt" content="ON-CALL — a terminal-style incident simulator with a giant grade letter">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="ON-CALL — the platform incident simulator">
-<meta name="twitter:description" content="Six incidents, one night, thirteen decisions. Free in your browser.">
+<meta name="twitter:description" content="Six incidents, thirteen decisions, one postmortem. If you only patch the symptom, it comes back inside your shift.">
 <meta name="twitter:image" content="https://oncall-simulator.vercel.app/assets/og.png">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
@@ -66,12 +66,13 @@
     <section class="screen is-active" id="screen-title" aria-labelledby="title-heading">
       <h2 class="sr" id="title-heading">Start a shift</h2>
 
-      <div class="hero-title">Six incidents.<br><span class="dim">One night.</span><br>Yours.</div>
+      <div class="hero-title">The pager<br><span class="dim">goes off at</span><br>02:11.</div>
 
       <p class="hero-lede">
-        You are the on-call platform engineer. The pager goes off at <strong>02:11</strong> and it does not stop.
-        Every move you make advances the clock, burns error budget and touches a number of real customers —
-        and if you only patch the symptom, <strong>the incident comes back worse</strong> before your shift ends.
+        You are the platform engineer on call. Work six incidents by choosing what to inspect, mitigate and fix
+        before the pager comes back. Finish the shift and you get a <strong>postmortem, a grade, and a link
+        your team can try to beat</strong>. Patch the symptom and the same incident returns inside your shift,
+        one severity higher.
       </p>
 
       <div class="pager-card">
@@ -109,14 +110,15 @@
     </section>
 
     <!-- ── play ──────────────────────────────────────────── -->
-    <section class="screen" id="screen-play" aria-label="Incident in progress">
-      <div class="hud" aria-label="Shift telemetry">
-        <div><div class="k">Clock</div><div class="v" id="hud-clock">02:11</div></div>
-        <div><div class="k">Incident</div><div class="v" id="hud-inc">1 / 6</div></div>
-        <div><div class="k">Error budget</div><div class="v" id="hud-budget">100%</div></div>
-        <div><div class="k">On the clock</div><div class="v" id="hud-min">0m</div></div>
-        <div><div class="k">Peak blast</div><div class="v" id="hud-peak">0</div></div>
-      </div>
+    <section class="screen" id="screen-play" aria-labelledby="play-heading">
+      <h2 class="sr" id="play-heading">Incident in progress</h2>
+      <dl class="hud" aria-label="Shift telemetry">
+        <div><dt class="k">Clock</dt><dd class="v" id="hud-clock">02:11</dd></div>
+        <div><dt class="k">Incident</dt><dd class="v" id="hud-inc">1 / 6</dd></div>
+        <div><dt class="k">Error budget</dt><dd class="v" id="hud-budget">100%</dd></div>
+        <div><dt class="k">On the clock</dt><dd class="v" id="hud-min">0m</dd></div>
+        <div><dt class="k">Peak blast</dt><dd class="v" id="hud-peak">0</dd></div>
+      </dl>
 
       <div class="stage">
         <div class="stage-head">
@@ -127,7 +129,7 @@
           </span>
         </div>
 
-        <div class="log" id="log" role="log" aria-live="polite" aria-relevant="additions" tabindex="0"></div>
+        <div class="log" id="log" aria-live="off" tabindex="0"></div>
 
         <div class="choices" id="choices" hidden></div>
 
@@ -143,7 +145,7 @@
       <h2 class="sr" id="pm-heading">Postmortem</h2>
 
       <div class="pm-top">
-        <div class="grade-letter g-b" id="pm-grade" aria-hidden="true">B</div>
+        <div class="grade-letter g-b" id="pm-grade" role="img" aria-label="Grade B">B</div>
         <div class="pm-verdict">
           <p class="tag" id="pm-tagline">Shift over.</p>
           <p class="sub" id="pm-sub">Shift #000000</p>
@@ -187,11 +189,12 @@
 
   <footer class="site-foot">
     <span>ON-CALL · a game about the night shift</span>
-    <span>Built by <a href="https://kanishksachdeva.com" rel="noopener">Kanishk Sachdeva</a> · <a href="https://github.com/kanishk-sachdeva" rel="noopener">source</a></span>
+    <span>Built by <a href="https://kanishksachdeva.com" rel="noopener">Kanishk Sachdeva</a> · <a href="https://github.com/kanishk-sachdeva/oncall-simulator" rel="noopener" aria-label="Source code on GitHub">source code</a></span>
   </footer>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<p class="sr" id="announcer" role="status" aria-live="polite" aria-atomic="true"></p>
 
 <noscript>
   <div style="max-width:640px;margin:40px auto;padding:20px;border:1px solid #23262f;font-family:monospace;color:#e9ebef">

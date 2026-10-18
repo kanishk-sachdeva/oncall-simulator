@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <title>ON-CALL — social card</title>
 <style>
-  @font-face { font-family: mono; src: local("SF Mono"), local("Menlo"), local("Consolas"); }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 1200px; height: 630px; overflow: hidden; }
   body {
@@ -19,25 +18,42 @@
       linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
     background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 70% 80% at 30% 20%, black, transparent 78%);
+    mask-image: radial-gradient(ellipse 80% 80% at 25% 25%, black, transparent 80%);
   }
-  .frame { position: absolute; inset: 26px; border: 1px solid #23262f; border-radius: 8px; }
-  .inner { position: absolute; inset: 26px; padding: 44px 48px; display: flex; flex-direction: column; justify-content: space-between; }
+  .frame { position: absolute; inset: 24px; border: 1px solid #23262f; border-radius: 8px; }
+  .inner { position: absolute; inset: 24px; padding: 40px 46px 34px; display: flex; flex-direction: column; justify-content: space-between; }
   .top { display: flex; align-items: baseline; justify-content: space-between; }
-  h1 { font-size: 30px; letter-spacing: 0.22em; font-weight: 700; }
-  .tagline { color: #555c68; font-size: 15px; letter-spacing: 0.16em; text-transform: uppercase; }
-  .hero { display: flex; align-items: flex-end; gap: 40px; }
-  .big { font-size: 190px; line-height: 0.78; font-weight: 700; color: #ffb020; letter-spacing: -0.03em; }
-  .stack { padding-bottom: 6px; }
-  .line1 { font-size: 46px; line-height: 1.1; font-weight: 700; letter-spacing: 0.01em; }
-  .line1 .dim { color: #555c68; }
-  .line2 { margin-top: 14px; color: #a7adb8; font-size: 21px; line-height: 1.45; max-width: 640px; }
-  .bottom { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #23262f; padding-top: 22px; }
-  .chips { display: flex; gap: 10px; }
-  .chip { border: 1px solid #2d313b; color: #a7adb8; font-size: 15px; padding: 6px 12px; border-radius: 3px; }
-  .chip.sev { color: #f0526b; border-color: #f0526b; }
-  .chip.rec { color: #a98bf5; border-color: #a98bf5; }
-  .url { color: #555c68; font-size: 16px; letter-spacing: 0.06em; }
+  h1 { font-size: 28px; letter-spacing: 0.24em; font-weight: 700; }
+  .tagline { color: #868d9c; font-size: 14px; letter-spacing: 0.18em; text-transform: uppercase; }
+
+  .mid { display: flex; align-items: center; gap: 52px; }
+  .clock { flex-shrink: 0; }
+  .clock .time { font-size: 150px; line-height: 0.82; font-weight: 700; color: #ffb020; letter-spacing: -0.045em; }
+  .clock .cap { color: #a7adb8; font-size: 17px; margin-top: 14px; letter-spacing: 0.04em; }
+
+  .pagecard { flex: 1; border: 1px solid #2d313b; border-radius: 6px; overflow: hidden; background: #12141a; }
+  .pagebar {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 14px; border-bottom: 1px solid #23262f; background: #191c23;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #868d9c;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #f0526b; }
+  .sev1 { margin-left: auto; border: 1px solid #f0526b; color: #f0526b; border-radius: 2px; padding: 1px 7px; font-size: 11px; }
+  .pagebody { padding: 16px 16px 18px; }
+  .l1 { font-size: 21px; line-height: 1.35; }
+  .l2 { font-size: 16px; color: #a7adb8; margin-top: 8px; }
+  .l3 { font-size: 14px; color: #868d9c; margin-top: 12px; }
+
+  .bottom { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #23262f; padding-top: 20px; }
+  .cta { display: flex; align-items: center; gap: 14px; }
+  .play {
+    background: #ffb020; color: #14120a; font-weight: 700;
+    font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 11px 18px; border-radius: 4px;
+  }
+  .cta .sub { color: #a7adb8; font-size: 14px; letter-spacing: 0.02em; max-width: 330px; line-height: 1.4; }
+  .chips { display: flex; gap: 8px; }
+  .chip { border: 1px solid #2d313b; color: #a7adb8; font-size: 13px; padding: 5px 10px; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -49,22 +65,31 @@
       <div class="tagline">platform incident simulator</div>
     </div>
 
-    <div class="hero">
-      <div class="big">B</div>
-      <div class="stack">
-        <div class="line1">Six incidents. <span class="dim">One night.</span></div>
-        <div class="line2">You are the on-call engineer. Every choice moves the clock, burns error budget and decides whether the incident comes back.</div>
+    <div class="mid">
+      <div class="clock">
+        <div class="time">02:11</div>
+        <div class="cap">The pager goes off.</div>
+      </div>
+      <div class="pagecard">
+        <div class="pagebar"><span class="dot"></span> PagerDuty &middot; primary on-call <span class="sev1">SEV1</span></div>
+        <div class="pagebody">
+          <div class="l1">checkout-api error rate 8.2%</div>
+          <div class="l2">Last deploy: 12 minutes ago.</div>
+          <div class="l3">Six incidents. Thirteen decisions. One postmortem.</div>
+        </div>
       </div>
     </div>
 
     <div class="bottom">
+      <div class="cta">
+        <span class="play">Play the shift</span>
+        <span class="sub">Patch the symptom and the incident comes back inside your shift.</span>
+      </div>
       <div class="chips">
-        <span class="chip sev">SEV1</span>
         <span class="chip">23 incidents</span>
         <span class="chip">138 decisions</span>
-        <span class="chip rec">RECURRENCE</span>
+        <span class="chip">free</span>
       </div>
-      <div class="url">oncall-simulator.vercel.app</div>
     </div>
   </div>
 </body>

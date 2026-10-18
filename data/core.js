@@ -617,7 +617,7 @@ export const pack = [
         choices: [
           {
             label: "Post an interim update now: impact, scope, next update time",
-            pts: 9, min: 4, customers: 0, fixesCause: false,
+            pts: 9, min: 4, customers: 0, fixesCause: true,
             say: [
               ["said", "status: We are investigating elevated errors on quote and checkout (14:02 UTC). Next update by 14:30."],
               ["good", "Support now answers tickets with the same words you are using. Impact, scope, a promised next update."],
@@ -634,7 +634,7 @@ export const pack = [
           },
           {
             label: "Hand comms to the on-call lead and go back to the keyboard",
-            pts: 7, min: 3, customers: 0, fixesCause: false,
+            pts: 7, min: 3, customers: 0, fixesCause: true,
             say: [
               ["out", "Comms IC owns the status page and the support channel. You own the system."],
               ["good", "Right split at scale. One person talking, one person typing."],
