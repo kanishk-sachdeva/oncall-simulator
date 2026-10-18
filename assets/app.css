@@ -425,6 +425,20 @@ table.pm tr.rec td { background: rgba(169, 139, 245, 0.05); }
 .pm-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
 .pm-note { color: var(--text-4); font-size: 12px; margin-top: 18px; }
 .share-state { color: var(--green); font-size: 12px; margin-top: 10px; min-height: 18px; }
+.share-box {
+  width: 100%;
+  margin-top: 10px;
+  background: var(--panel);
+  color: var(--text-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+}
+.share-box:focus { border-color: var(--amber-dim); }
 
 /* ─── footer ───────────────────────────────────────────────── */
 .site-foot {

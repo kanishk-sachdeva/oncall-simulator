@@ -379,31 +379,59 @@ function endShift() {
   beep("end");
 }
 
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:-1200px;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand ? document.execCommand("copy") : false;
+    ta.remove();
+    return !!ok;
+  } catch { return false; }
+}
+
+function showShareBox(text) {
+  const box = $("#share-box");
+  if (!box) return;
+  box.hidden = false;
+  box.value = text;
+  box.focus();
+  box.select();
+}
+
 async function shareResult() {
   const r = state.lastResult;
   if (!r) return;
   const url = location.origin + location.pathname + "?s=" + r.seed;
   const text = shareText(r, url);
-  try {
-    if (navigator.share) {
+  const out = $("#share-state");
+  if (navigator.share) {
+    try {
       await navigator.share({ title: "ON-CALL", text, url });
-      $("#share-state").textContent = "Shared.";
+      out.textContent = "Shared.";
       return;
-    }
-    await navigator.clipboard.writeText(text);
-    $("#share-state").textContent = "Result copied to clipboard.";
-  } catch {
-    $("#share-state").textContent = "Could not copy — select the text above and copy manually.";
+    } catch { /* fall through to clipboard */ }
   }
+  if (await copyText(text)) {
+    out.textContent = "Result copied to clipboard.";
+    return;
+  }
+  showShareBox(text);
+  out.textContent = "Copy already selected below.";
 }
 
-function copyLink() {
+async function copyLink() {
   const r = state.lastResult;
   const url = location.origin + location.pathname + "?s=" + (r ? r.seed : "");
-  navigator.clipboard.writeText(url).then(
-    () => toast("Shift link copied"),
-    () => toast("Copy failed")
-  );
+  if (await copyText(url)) toast("Shift link copied");
+  else { showShareBox(url); toast("Select and copy the link below"); }
 }
 
 /* ───────────────────────── bindings ───────────────────────── */
